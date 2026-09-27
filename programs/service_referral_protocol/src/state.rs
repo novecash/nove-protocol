@@ -1,0 +1,93 @@
+use anchor_lang::prelude::*;
+
+#[account]
+pub struct ProtocolState {
+    pub bump: u8,
+    pub vault_authority_bump: u8,
+    pub initialized_at: i64,
+    pub registration_open_at: i64,
+    pub service_treasury: Pubkey,
+    pub usdt_mint: Pubkey,
+    pub usdc_mint: Pubkey,
+    /// Number of the 100 Pioneer positions permanently assigned so far.
+    pub pioneer_positions_assigned: u16,
+    pub real_user_count: u64,
+    /// Next globally unique logical service-unit ID. Starts at 1.
+    pub next_unit_id: u128,
+    /// Global per-virtual-share Pioneer index, scaled by PIONEER_SCALE.
+    pub pioneer_index_usdt: u128,
+    pub pioneer_index_usdc: u128,
+    /// Fractional unassigned Pioneer value not yet transferable as a whole token atom.
+    pub pioneer_unassigned_remainder_usdt_scaled: u128,
+    pub pioneer_unassigned_remainder_usdc_scaled: u128,
+    /// Treasury accounting buckets are intentionally separate for auditability.
+    pub lifetime_service_fees_usdt: u128,
+    pub lifetime_service_fees_usdc: u128,
+    pub lifetime_unallocated_usdt: u128,
+    pub lifetime_unallocated_usdc: u128,
+    pub lifetime_expired_usdt: u128,
+    pub lifetime_expired_usdc: u128,
+    pub lifetime_rounding_usdt: u128,
+    pub lifetime_rounding_usdc: u128,
+    pub lifetime_pioneer_unassigned_usdt: u128,
+    pub lifetime_pioneer_unassigned_usdc: u128,
+}
+
+impl ProtocolState {
+    // 8-byte Anchor discriminator + 364 bytes of serialized fields.
+    pub const SPACE: usize = 372;
+}
+
+#[account]
+pub struct UserState {
+    pub bump: u8,
+    pub wallet: Pubkey,
+    pub referrer: Pubkey,
+    pub registered_at: i64,
+    /// Number of Pioneer positions owned by this wallet. One wallet may own many.
+    pub pioneer_positions: u16,
+    pub active_until: i64,
+    pub grace_until: i64,
+    /// Number of 7-day ACTIVE weeks successfully started by this wallet. Inactivity
+    /// does not advance this counter, so the progressive minimum never grows merely
+    /// because calendar time passed.
+    pub active_weeks_started: u32,
+    /// Personal units accumulated in the current ACTIVE week. During GRACE this is
+    /// intentionally retained so the just-finished week's depth remains valid while
+    /// rewards are pending. It is replaced only when the next ACTIVE week starts.
+    pub current_week_units: u64,
+    /// Units accumulated while GRACE/INACTIVE toward the progressive requirement
+    /// for the next ACTIVE week.
+    pub qualification_progress_units: u64,
+    /// Start of the current partial qualification accumulation window.
+    pub qualification_window_started_at: i64,
+    pub lifetime_service_units: u128,
+    pub next_purchase_index: u64,
+    pub self_accrued_usdt: u64,
+    pub self_accrued_usdc: u64,
+    pub network_claimable_usdt: u64,
+    pub network_claimable_usdc: u64,
+    pub network_pending_usdt: u64,
+    pub network_pending_usdc: u64,
+    pub lifetime_claimed_usdt: u128,
+    pub lifetime_claimed_usdc: u128,
+    pub lifetime_expired_usdt: u128,
+    pub lifetime_expired_usdc: u128,
+    /// Pioneer checkpoints use the same PIONEER_SCALE as the global indexes.
+    pub pioneer_checkpoint_usdt: u128,
+    pub pioneer_checkpoint_usdc: u128,
+}
+
+impl UserState {
+    pub const SPACE: usize = 295;
+    pub fn is_technical_root(&self) -> bool {
+        self.wallet == Pubkey::default()
+    }
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ActivityStatus {
+    Active,
+    Grace,
+    Inactive,
+}
